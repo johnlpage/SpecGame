@@ -2,6 +2,7 @@
 build/
 *.bin
 *.tap
+!docs/*.tap
 *.sna
 *.lst
 *.sld
