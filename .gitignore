@@ -1,0 +1,18 @@
+# Build artifacts
+build/
+*.bin
+*.tap
+*.sna
+*.lst
+*.sld
+*.sym
+
+# Captured screenshots / screen dumps
+*.scr
+*.bmp
+*.png
+
+# Python / macOS
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA '82 — Grand Theft Auto 0 (ZX Spectrum 48K)</title>
+    <script src="jsspeccy/jsspeccy.js"></script>
+    <style>
+        :root {
+            --bg: #0c0d12;
+            --panel: #141620;
+            --border: #2a2f42;
+            --text: #e6e8f0;
+            --muted: #9aa2b8;
+            --spec-red: #ff1e27;
+            --spec-yellow: #ffe600;
+            --spec-green: #00e640;
+            --spec-cyan: #00e5ff;
+            --spec-magenta: #ff2ae6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #171a2b 0%, var(--bg) 60%);
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+            line-height: 1.5;
+        }
+
+        /* Iconic 1982 Sinclair ZX Spectrum diagonal rainbow corner */
+        .topbar {
+            position: relative;
+            overflow: hidden;
+            background: #08090d;
+            border-bottom: 2px solid var(--border);
+            padding: 16px 20px;
+        }
+
+        .topbar-inner {
+            max-width: 960px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .rainbow {
+            position: absolute;
+            top: 0;
+            right: 48px;
+            bottom: 0;
+            display: flex;
+            transform: skewX(-28deg);
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        .rainbow span {
+            width: 18px;
+            height: 100%;
+            display: block;
+        }
+        .rb-r { background: var(--spec-red); }
+        .rb-y { background: var(--spec-yellow); }
+        .rb-g { background: var(--spec-green); }
+        .rb-c { background: var(--spec-cyan); }
+
+        .brand-title {
+            margin: 0;
+            font-size: 1.65rem;
+            letter-spacing: 2px;
+            color: var(--spec-yellow);
+            text-shadow: 2px 2px 0 var(--spec-red);
+        }
+
+        .brand-sub {
+            margin: 2px 0 0;
+            font-size: 0.85rem;
+            color: var(--spec-cyan);
+            letter-spacing: 1px;
+        }
+
+        .price-tag {
+            background: var(--spec-yellow);
+            color: #000;
+            font-weight: 800;
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            border-radius: 3px;
+            white-space: nowrap;
+            box-shadow: 3px 3px 0 var(--spec-red);
+        }
+
+        main {
+            max-width: 960px;
+            margin: 24px auto 48px;
+            padding: 0 16px;
+        }
+
+        .file-warning {
+            display: none;
+            background: #3a1216;
+            border: 1px solid var(--spec-red);
+            color: #ffd5d7;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            font-size: 0.88rem;
+        }
+
+        .stage-card {
+            background: #000;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #jsspeccy {
+            width: 640px;
+            max-width: 100%;
+            background: #000;
+        }
+
+        .toolbar {
+            width: 100%;
+            max-width: 640px;
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        button, a.btn {
+            appearance: none;
+            background: #1d2233;
+            color: var(--text);
+            border: 1px solid #39425e;
+            border-radius: 4px;
+            padding: 7px 12px;
+            font: inherit;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.12s, border-color 0.12s;
+        }
+
+        button:hover, a.btn:hover {
+            background: #283049;
+            border-color: var(--spec-cyan);
+            color: #fff;
+        }
+
+        .hint {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 18px;
+        }
+
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 0.98rem;
+            letter-spacing: 1px;
+            color: var(--spec-yellow);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+        }
+
+        .controls-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+        }
+
+        .controls-table td {
+            padding: 5px 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .controls-table td:first-child {
+            color: var(--spec-cyan);
+            font-weight: 700;
+            white-space: nowrap;
+            padding-right: 12px;
+        }
+
+        .story-text {
+            font-size: 0.84rem;
+            color: #d0d5e6;
+            margin: 0 0 10px;
+        }
+
+        .chapters {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 0.82rem;
+            color: #c7cde0;
+        }
+
+        .chapters li {
+            margin-bottom: 4px;
+        }
+
+        .chapters strong {
+            color: var(--spec-green);
+        }
+
+        footer {
+            max-width: 960px;
+            margin: 24px auto 0;
+            padding: 16px;
+            text-align: center;
+            font-size: 0.76rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+        }
+
+        footer a {
+            color: var(--spec-cyan);
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="rainbow" aria-hidden="true">
+            <span class="rb-r"></span>
+            <span class="rb-y"></span>
+            <span class="rb-g"></span>
+            <span class="rb-c"></span>
+        </div>
+        <div class="topbar-inner">
+            <div>
+                <h1 class="brand-title">GTA '82 — GRAND THEFT AUTO 0</h1>
+                <p class="brand-sub">OPEN-WORLD 3D RAYCAST DRIVING • ZX SPECTRUM 48K</p>
+            </div>
+            <div class="price-tag">ONLY £1.99!</div>
+        </div>
+    </header>
+
+    <main>
+        <div id="file-warning" class="file-warning">
+            <strong>Heads up:</strong> Modern browsers block WebAssembly Workers over <code>file://</code>.
+            Serve this folder over HTTP (e.g. <code>python3 -m http.server 8000</code> inside <code>web/</code>)
+            or publish it to GitHub Pages / Netlify / any static web host.
+        </div>
+
+        <section class="stage-card">
+            <div id="jsspeccy"></div>
+            <div class="toolbar">
+                <div class="btn-group">
+                    <button type="button" id="btn-reload">↻ Reload Tape</button>
+                    <button type="button" id="btn-fullscreen">⛶ Fullscreen</button>
+                    <a class="btn" href="gta82.tap" download="gta82.tap">⬇ Download .TAP</a>
+                </div>
+                <span class="hint">Click the Play button above to boot with 48K beeper audio</span>
+            </div>
+        </section>
+
+        <section class="grid">
+            <article class="card">
+                <h2>CONTROLS</h2>
+                <table class="controls-table">
+                    <tr><td>W / Q / 7</td><td>Accelerate (also starts mission)</td></tr>
+                    <tr><td>S / Z / 6</td><td>Brake / Reverse</td></tr>
+                    <tr><td>A / O / 5</td><td>Steer Left</td></tr>
+                    <tr><td>D / P / 8</td><td>Steer Right</td></tr>
+                    <tr><td>SPACE</td><td>Handbrake Drift / Dismiss Briefing</td></tr>
+                    <tr><td>C or V</td><td>Toggle 3rd-Person / 1st-Person Cockpit</td></tr>
+                    <tr><td>M</td><td>Toggle 48K Beeper Sound</td></tr>
+                </table>
+                <p class="hint" style="margin: 10px 0 0;">
+                    Navigate using the monochrome <strong>MAP</strong> (<code>N=UP</code>):
+                    steady dot = your car, pulsing <code>+</code> = target. Check <code>H:</code> beside your gear for heading!
+                </p>
+            </article>
+
+            <article class="card">
+                <h2>THE SECTOR 48 CONSPIRACY</h2>
+                <p class="story-text">
+                    You just boosted a crimson <strong>Z80-GT Turbo Interceptor</strong> off Grand Boulevard.
+                    Complete 6 back-to-back timed pickup &amp; delivery jobs across the 32×32 city to shut down the Grid Syndicate.
+                    Miss a deadline and you're sent back to your previous checkpoint!
+                </p>
+                <ol class="chapters">
+                    <li><strong>The Leak</strong> — Data Tape: Harbor Plaza → Press HQ</li>
+                    <li><strong>The Keycard</strong> — Vault Key: Neon Strip → Park Gazebo</li>
+                    <li><strong>Turbo Nitro</strong> — Nitro Cell: Speedway N → Old Town Bay</li>
+                    <li><strong>The Z80 Chip</strong> — Grid Chip: North Blvd → Hacker Den</li>
+                    <li><strong>The EMP Core</strong> — EMP Core: NW Highway → Stadium S</li>
+                    <li><strong>Final Run</strong> — Master Key: North Ring → Spire HQ</li>
+                </ol>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        © 1982 SpecGame Software Ltd. • Runs in-browser via
+        <a href="https://github.com/gasman/jsspeccy3" target="_blank" rel="noopener">JSSpeccy 3.2</a> (GPLv3).
+        "If this cassette fails to load, check your azimuth screw and try again!"
+    </footer>
+
+    <script>
+        if (window.location.protocol === 'file:') {
+            document.getElementById('file-warning').style.display = 'block';
+        }
+
+        // Prevent Space and Arrow keys from scrolling the page while driving
+        window.addEventListener('keydown', function (e) {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        var emu = null;
+        window.addEventListener('DOMContentLoaded', function () {
+            emu = JSSpeccy(document.getElementById('jsspeccy'), {
+                machine: 48,
+                openUrl: 'gta82.tap',
+                autoLoadTapes: true,
+                tapeTrapsEnabled: true,
+                autoStart: false,
+                zoom: 2,
+                sandbox: true
+            });
+
+            document.getElementById('btn-reload').addEventListener('click', function () {
+                if (emu) {
+                    emu.openUrl('gta82.tap');
+                }
+                this.blur();
+            });
+
+            document.getElementById('btn-fullscreen').addEventListener('click', function () {
+                if (emu) {
+                    emu.toggleFullscreen();
+                }
+                this.blur();
+            });
+        });
+    </script>
+</body>
+</html>
