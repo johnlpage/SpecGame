@@ -107,17 +107,17 @@ Supports modern **WASD**, classic Spectrum **QZOP**, and **Cursor Keys (5/6/7/8)
 2. Type `LOAD ""` and press **`ENTER`**.
 3. Press **`PLAY`**. Loads and auto-starts automatically (`10 CLEAR 32767 : LOAD "" CODE : RANDOMIZE USR 32768`).
 
-### Play in Any Browser (Web / GitHub Pages / Netlify)
-The self-contained [web/](web/) directory bundles `gta82.tap`, [web/index.html](web/index.html), and the WebAssembly **JSSpeccy 3.2** ZX Spectrum 48K emulator (`web/jsspeccy/`). Publish `web/` to any static host, or test locally:
+### Play in Any Browser (GitHub Pages `/docs`)
+The self-contained [docs/](docs/) directory bundles `gta82.tap`, [docs/index.html](docs/index.html), and the WebAssembly **JSSpeccy 3.2** ZX Spectrum 48K emulator (`docs/jsspeccy/`). Enable GitHub Pages from `/docs` on your repository branch, or test locally:
 ```bash
-make serve        # Serves web/ at http://localhost:8000
+make serve        # Serves docs/ at http://localhost:8000
 ```
 
 ### Instant Launch in ZEsarUX (Build System)
 ```bash
 make run          # Assemble and boot build/game.sna directly in ZEsarUX
 make run-tap      # Test the authentic BASIC autostart tape (build/game.tap)
-make build        # Assemble and sync web/gta82.tap
+make build        # Assemble and sync docs/gta82.tap
 ```
 
 ---
