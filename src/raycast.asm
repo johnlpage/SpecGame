@@ -239,4 +239,175 @@ CastAllRays:
     ld a, (hl)
     cp 32
     jp c, .ray_loop
+
+    call ProjectLocalMarker
+    ret
+
+; -----------------------------------------------------------------------------
+; ProjectLocalMarker
+; Projects active mission target (CurCheckX + 0.5, CurCheckY + 0.5) ONLY when
+; within local approach range (<= 5.5 tiles ahead) so it NEVER clutters the
+; skyline across the map, but clearly marks the exact drop-zone on arrival!
+; Outputs: BeaconCol (0..31 or $FF if far/offscreen), BeaconDist (perpDist8)
+; -----------------------------------------------------------------------------
+ProjectLocalMarker:
+    ld a, (CurCheckX)
+    ld h, a
+    ld l, 128
+    ld de, (CamX)
+    or a
+    sbc hl, de
+    call ShiftRight6Signed
+    ld (.dx4), a
+
+    ld a, (CurCheckY)
+    ld h, a
+    ld l, 128
+    ld de, (CamY)
+    or a
+    sbc hl, de
+    call ShiftRight6Signed
+    ld (.dy4), a
+
+    ld a, (CamAngle)
+    ld l, a
+    ld h, high(SinTable)
+    ld a, (hl)
+    ld (.sinA), a
+
+    ld a, (CamAngle)
+    ld l, a
+    ld h, 0
+    ld de, CosTable
+    add hl, de
+    ld a, (hl)
+    ld (.cosA), a
+
+    ; fwd = (dx4 * cosA + dy4 * sinA) >> 8  (2 units = 1 tile)
+    ld a, (.dx4)
+    ld d, a
+    ld a, (.cosA)
+    ld e, a
+    call MulS8xS8_Shr8
+    push hl
+    ld a, (.dy4)
+    ld d, a
+    ld a, (.sinA)
+    ld e, a
+    call MulS8xS8_Shr8
+    pop de
+    add hl, de
+    ld (.fwd), hl
+
+    ; Local range cutoff: ONLY show when 1 <= fwd <= 11 (0.5 .. 5.5 tiles away!)
+    bit 7, h
+    jr nz, .offscreen           ; Behind camera
+    ld a, h
+    or a
+    jr nz, .offscreen           ; Too far (> 128 tiles)
+    ld a, l
+    cp 1
+    jr c, .offscreen            ; Too close
+    cp 12                       ; > 5.5 tiles away -> hidden!
+    jr nc, .offscreen
+
+    ; right = (-dx4 * sinA + dy4 * cosA) >> 8
+    ld a, (.dx4)
+    neg
+    ld d, a
+    ld a, (.sinA)
+    ld e, a
+    call MulS8xS8_Shr8
+    push hl
+    ld a, (.dy4)
+    ld d, a
+    ld a, (.cosA)
+    ld e, a
+    call MulS8xS8_Shr8
+    pop de
+    add hl, de
+    ld (.right), hl
+
+    ; Check |right| < fwd (inside 90 deg FOV)
+    ld a, h
+    or a
+    jp p, .abs_r_ok
+    xor a
+    sub l
+    ld l, a
+    sbc a, a
+    sub h
+    ld h, a
+.abs_r_ok:
+    ex de, hl                   ; DE = |right|
+    ld hl, (.fwd)
+    or a
+    sbc hl, de
+    jr c, .offscreen
+    jr z, .offscreen
+
+    ; offset = (|right| * 16) / fwd  (0..15)
+    ld hl, (.fwd)
+    ld c, l
+    ld l, e
+    ld h, 0
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl                  ; * 16
+    ld b, 0
+    ld e, c
+    ld d, 0
+.div_loop:
+    or a
+    sbc hl, de
+    jr c, .div_done
+    inc b
+    jr .div_loop
+.div_done:
+    ld hl, (.right)
+    bit 7, h
+    jr nz, .col_left
+    ld a, 16
+    add a, b
+    cp 31
+    jr c, .col_ok
+    ld a, 31
+    jr .col_ok
+.col_left:
+    ld a, 16
+    sub b
+    jr nc, .col_ok
+    xor a
+.col_ok:
+    ld (BeaconCol), a
+
+    ; BeaconDist = fwd * 8 (matches RAY_ZBUF where 16 = 1 tile!)
+    ld hl, (.fwd)
+    ld a, l
+    add a, a
+    add a, a
+    add a, a
+    ld (BeaconDist), a
+    ret
+
+.offscreen:
+    ld a, $FF
+    ld (BeaconCol), a
+    ret
+
+.dx4:   db 0
+.dy4:   db 0
+.cosA:  db 0
+.sinA:  db 0
+.fwd:   dw 0
+.right: dw 0
+
+ShiftRight6Signed:
+    add hl, hl
+    add hl, hl
+    ld a, h
+    cp $80
+    ret nz
+    ld a, $81
     ret

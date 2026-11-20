@@ -10,8 +10,9 @@
 ; -----------------------------------------------------------------------------
 RenderFrame:
     call RenderSky              ; Clear sky, scrolling hills/skyline & sun
-    call RenderGround           ; Fast 8-band perspective roads, grass, plaza
+    call RenderGround           ; Fast 8-band perspective roads, grass, plaza, drop-zone pad
     call RenderWalls            ; Fast 32-col variable-height textured 3D buildings
+    call RenderLocalMarker      ; Compact local drop-zone arrow (<= 5.5 tiles only!)
     halt                        ; Sync right before blit -> zero flicker, tear-free!
     call BlitViewport           ; Interleaved VBUF -> ZX Spectrum Screen
     call RenderCarOverlay       ; Full 1:1 res 3P Chase Car or 1P Hood/Pillars
@@ -260,6 +261,20 @@ RenderGround:
     cp 32
     jr nc, .gnd_default_road
 
+    ; Local GTA Drop-Zone Pad: highlight active target tile (CurCheckX, CurCheckY)
+    ; on the ground when approaching (GndBand >= 1, so invisible at far horizon!)
+    ld a, (GndBand)
+    or a
+    jr z, .gnd_lookup_map
+    ld a, (CurCheckX)
+    cp d
+    jr nz, .gnd_lookup_map
+    ld a, (CurCheckY)
+    cp e
+    jr z, .tile_dropzone
+
+.gnd_lookup_map:
+    ld a, e
     rrca
     rrca
     rrca
@@ -290,6 +305,18 @@ RenderGround:
     ld c, 0
     ld d, 0
     ld e, ATTR_ROAD
+    jr .write_gnd_cell
+
+.tile_dropzone:
+    ; Pulsing glowing Bright Yellow / White GTA drop-zone target pad on the street!
+    ld a, (SYS_FRAMES)
+    bit 4, a
+    ld e, $46                   ; Bright Yellow on Black
+    jr z, .dz_col_ok
+    ld e, $47                   ; Bright White pulse!
+.dz_col_ok:
+    ld c, %11111111
+    ld d, %10100101             ; Checkered glowing target pad!
     jr .write_gnd_cell
 
 .tile_grass:
@@ -754,6 +781,136 @@ WallPatterns:
     db %10101010, %00000000, %01010101, %00100010   ; 8 shaded
     db %01001010, %00100100, %10010010, %01001001   ; 9 shaded
     db %10001000, %01000100, %00100010, %00010001   ; 10 shaded
+
+; -----------------------------------------------------------------------------
+; RenderLocalMarker
+; Draws a compact, bobbing street-level downward arrow (6 buffer rows = 12px)
+; hovering directly above the glowing drop-zone pad ONLY when within <= 5.5 tiles
+; and in front of all buildings (RAY_ZBUF). Never visible across the city!
+; -----------------------------------------------------------------------------
+RenderLocalMarker:
+    ld a, (BeaconCol)
+    cp 32
+    ret nc                      ; $FF = too far (> 5.5 tiles) or offscreen!
+
+    ld c, a                     ; C = byte column 0..31
+
+    ; Z-buffer occlusion check: hidden behind any closer building!
+    ld l, c
+    ld h, high(RAY_ZBUF)
+    ld a, (BeaconDist)
+    cp (hl)
+    ret nc
+
+    ; Compute street-level vertical placement right above the ground pad:
+    ; padRow = 32 + WallHeightTable[BeaconDist]; arrow hovers 6 rows above padRow!
+    ld a, (BeaconDist)
+    ld l, a
+    ld h, high(WallHeightTable)
+    ld a, (hl)                  ; baseH (4..32)
+    add a, 22                   ; Hover cleanly right above the glowing pad!
+    ; Subtle 1-row bobbing animation via 50 Hz SYS_FRAMES bit 4
+    ld b, a
+    ld a, (SYS_FRAMES)
+    bit 4, a
+    ld a, b
+    jr z, .bob_ok
+    dec a
+.bob_ok:
+    cp 56
+    jr c, .top_clamp_ok
+    ld a, 56
+.top_clamp_ok:
+    ld (.mTop), a               ; Top buffer row (24..56 — ALWAYS street-level, never high sky!)
+
+    ; Draw crisp 6-row downward arrow bitmap into VBUF_PX at (.mTop .. .mTop+5), col C
+    ld l, a
+    ld h, 0
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    ld a, c
+    or l
+    ld l, a
+    ld a, h
+    add a, high(VBUF_PX)
+    ld h, a                     ; HL = VBUF_PX[mTop][col]
+
+    ld ix, LocalArrowBmp
+    ld b, 6
+    ld de, 32
+.m_px_loop:
+    ld a, (ix + 0)
+    ld (hl), a                  ; Crisp silhouette even in front of low guardrails!
+    inc ix
+    add hl, de
+    djnz .m_px_loop
+
+    ; Color the 2 character rows covered by (.mTop .. .mTop+5) Bright Yellow/White!
+    ; Preserve Blue sky paper whenever existing cell has PAPER 1 (Blue)!
+    ld a, (SYS_FRAMES)
+    bit 4, a
+    ld a, $46                   ; Bright Yellow on Black
+    jr z, .m_ink_ok
+    ld a, $47                   ; Bright White pulse
+.m_ink_ok:
+    ld (.mAttr), a
+
+    ld a, (.mTop)
+    srl a
+    srl a                       ; topCh = mTop >> 2
+    call .color_m_cell
+    ld a, (.mTop)
+    add a, 5
+    srl a
+    srl a                       ; botCh = (mTop + 5) >> 2
+    call .color_m_cell
+    ret
+
+; Color VBUF_ATTR[A][C] with (.mAttr), keeping Blue paper whenever existing PAPER == 1!
+.color_m_cell:
+    cp 16
+    ret nc
+    ld l, a
+    ld h, 0
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    ld a, c
+    or l
+    ld l, a
+    ld a, h
+    add a, high(VBUF_ATTR)
+    ld h, a
+    ld a, (hl)
+    and $38                     ; Extract PAPER bits (bits 5..3)
+    cp $08                      ; Is existing PAPER == 1 (Blue Sky)?
+    jr z, .m_sky_cell
+    ld a, (.mAttr)
+    ld (hl), a
+    ret
+.m_sky_cell:
+    ld a, (.mAttr)
+    and $07
+    or $08                      ; Seamless Blue sky paper + Yellow/White arrow ink!
+    ld (hl), a
+    ret
+
+.mTop:  db 0
+.mAttr: db 0
+
+; Compact 8x6 floating GTA downward checkpoint arrow!
+LocalArrowBmp:
+    db %00111100
+    db %00111100
+    db %11111111
+    db %01111110
+    db %00111100
+    db %00011000
 
 ; -----------------------------------------------------------------------------
 ; BlitViewport
